@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KDE Beda Level Cadastre</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="global-toast" id="globalToast"></div>
+
+<div class="app-container">
+  <div class="controls" id="controlsSidebar">
+    <div class="brand-header">
+      <span class="brand-title">KDE BEDA LEVEL</span>
+      <span class="brand-badge">CADASTRE</span>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabEntryBtn" onclick="switchTab('entry')">Entry</button>
+      <button class="tab-btn" id="tabImportBtn" onclick="switchTab('import')">Import</button>
+      <button class="tab-btn" id="tabDataBtn" onclick="switchTab('data')">Data Log</button>
+      <button class="tab-btn" id="tabLotBtn" onclick="switchTab('lot')">Lot Stn</button>
+      <button class="tab-btn" id="tabCalcBtn" onclick="switchTab('calc')">🧮 Calc</button>
+    </div>
+
+    <!-- Tab 1: Entry Mode -->
+    <div id="tab-entry" class="tab-content">
+      <div class="section-title">
+        <span>Cadastral CRS & Fix Setup</span>
+        <button type="button" id="pickDatumBtn" class="icon-btn" onclick="togglePickMode('datum')" title="Pick Station on Canvas to Set as Fix">🎯 PICK FIX</button>
+      </div>
+
+      <div class="card-panel">
+        <label>Malaysian State Cadastral CRS</label>
+        <select id="crsSelect" onchange="onCrsChange()" style="margin-bottom: 12px;">
+          <option value="johor_gdm2000" selected>Johor Cassini (GDM2000)</option>
+          <option value="johor_kertau">Johor Cassini (Kertau 1948)</option>
+          <option value="selangor_gdm2000">Selangor & KL Cassini (GDM2000)</option>
+          <option value="selangor_kertau">Selangor & KL Cassini (Kertau 1948)</option>
+          <option value="perak_gdm2000">Perak Cassini (GDM2000)</option>
+          <option value="perak_kertau">Perak Cassini (Kertau 1948)</option>
+          <option value="kedah_gdm2000">Kedah & Perlis Cassini (GDM2000)</option>
+          <option value="kedah_kertau">Kedah & Perlis Cassini (Kertau 1948)</option>
+          <option value="penang_gdm2000">Penang Cassini (GDM2000)</option>
+          <option value="penang_kertau">Penang Cassini (Kertau 1948)</option>
+          <option value="n9_gdm2000">NS & Melaka Cassini (GDM2000)</option>
+          <option value="n9_kertau">NS & Melaka Cassini (Kertau 1948)</option>
+          <option value="pahang_gdm2000">Pahang Cassini (GDM2000)</option>
+          <option value="pahang_kertau">Pahang Cassini (Kertau 1948)</option>
+          <option value="kelantan_gdm2000">Kelantan Cassini (GDM2000)</option>
+          <option value="kelantan_kertau">Kelantan Cassini (Kertau 1948)</option>
+          <option value="terengganu_gdm2000">Terengganu Cassini (GDM2000)</option>
+          <option value="terengganu_kertau">Terengganu Cassini (Kertau 1948)</option>
+          <option value="custom">Custom WGS84 Lat/Long Fix</option>
+        </select>
+
+        <label>Fix Station ID</label>
+        <input type="text" id="initialStn" placeholder="e.g. 1" style="margin-bottom: 10px;">
+
+        <div class="inline-inputs" style="margin-bottom: 10px;">
+          <div>
+            <label>Easting (X)</label>
+            <input type="number" step="0.001" id="datumE" placeholder="0.000">
+          </div>
+          <div>
+            <label>Northing (Y)</label>
+            <input type="number" step="0.001" id="datumN" placeholder="0.000">
+          </div>
+        </div>
+
+        <div id="customGpsBlock" style="display: none;">
+          <div class="inline-inputs" style="margin-bottom: 10px;">
+            <div>
+              <label>GPS Lat (°N)</label>
+              <input type="number" step="0.000001" id="datumLat" value="3.139003">
+            </div>
+            <div>
+              <label>GPS Long (°E)</label>
+              <input type="number" step="0.000001" id="datumLng" value="101.686855">
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="primary-btn btn-datum" onclick="addOrUpdateFixPoint()" style="margin-top: 4px;">🔺 Add / Update Fix Point</button>
+      </div>
+
+      <div class="section-title">Add Line Data</div>
+      <div class="form-group">
+        <div class="inline-inputs">
+          <div style="flex: 1;">
+            <label>
+              <span>From STN</span>
+              <button type="button" id="pickFromBtn" class="icon-btn" onclick="togglePickMode('from')" title="Pick Starting Station from Drawing">🎯 PICK</button>
+            </label>
+            <input type="text" id="fromStn" placeholder="From STN">
+          </div>
+          <div style="flex: 1;">
+            <label>
+              <span>To STN</span>
+              <button type="button" id="pickToBtn" class="icon-btn" onclick="togglePickMode('to')" title="Pick Target Station from Drawing">🎯 PICK</button>
+            </label>
+            <input type="text" id="toStn" placeholder="To STN">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>Bearing (DDD - MM - SS)</span>
+          <span>
+            <button type="button" class="icon-btn" onclick="reverseBearing()" title="Reverse (+180°)">↻ REV</button>
+          </span>
+        </label>
+        <div class="inline-inputs">
+          <input type="number" id="deg" placeholder="DDD" min="0" max="359">
+          <input type="number" id="min" placeholder="MM" min="0" max="59">
+          <input type="number" id="sec" placeholder="SS" min="0" max="59">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>Distance & Unit</span>
+        </label>
+        <div class="inline-inputs">
+          <input type="number" step="0.001" id="dist" placeholder="0.000" oninput="updateUnitPreview()">
+          <select id="unitSelect" style="width: 110px;" onchange="updateUnitPreview()">
+            <option value="m">Meter (m)</option>
+            <option value="lk">Link (lk)</option>
+          </select>
+        </div>
+        <div class="unit-hint" id="unitHint"></div>
+      </div>
+
+      <button type="button" class="primary-btn" onclick="addLeg()">Add Line</button>
+      <button type="button" class="primary-btn btn-export" onclick="openExportModal()" style="margin-top: 8px;">Export</button>
+    </div>
+
+    <!-- Tab 2: Import Mode -->
+    <div id="tab-import" class="tab-content" style="display: none;">
+      <div class="section-title">Upload Files</div>
+      
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="drop-zone-title">📁 Choose or Drag & Drop File(s)</div>
+        <div class="drop-zone-desc">Supports multiple KDE (.TXT), Star*Net (.DAT), or CSV</div>
+        <input type="file" id="fileInput" accept=".dat,.txt,.csv" multiple style="display: none;" onchange="handleFileSelect(event)">
+      </div>
+
+      <div class="form-group">
+        <label>Or Copy & Paste Raw Data Below:</label>
+        <textarea id="importPasteArea" placeholder="Paste KDE Export or DAT content here, e.g.:&#10;C 2 30236.405 -62130.544&#10;B 2-1 215-55-40 15&#10;D 2-1 55.324 0.01"></textarea>
+      </div>
+
+      <button type="button" class="primary-btn" onclick="parseAndImportData()">Process Data</button>
+    </div>
+
+    <!-- Tab 3: Unified Data Log -->
+    <div id="tab-data" class="tab-content" style="display: none;">
+      <div class="sub-tab-bar">
+        <button type="button" class="sub-tab-btn active" id="subTabLinesBtn" onclick="switchDataSubTab('lines')">
+          <span>📏 Line Log</span>
+          <span class="count-pill" id="lineCountBadge">0</span>
+        </button>
+        <button type="button" class="sub-tab-btn" id="subTabStnsBtn" onclick="switchDataSubTab('stns')">
+          <span>📍 Stn Log</span>
+          <span class="count-pill" id="stnCountBadge">0</span>
+        </button>
+      </div>
+
+      <!-- Subview A: Line Log -->
+      <div id="data-subview-lines">
+        <div class="section-title">Line Traverse Records</div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label>Filter Line Log</label>
+          <div class="inline-inputs">
+            <div style="flex: 1;">
+              <label style="font-size: 10px; color: #8a8d9b; margin-bottom: 3px;">From STN</label>
+              <select id="filterFromStn" onchange="updateTable()">
+                <option value="">All From</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 10px; color: #8a8d9b; margin-bottom: 3px;">To STN</label>
+              <select id="filterToStn" onchange="updateTable()">
+                <option value="">All To</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table id="traverseTable">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Bearing</th>
+                <th>Dist(m)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subview B: Station Log -->
+      <div id="data-subview-stns" style="display: none;">
+        <div class="section-title">Survey Station Coordinates</div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label>Search Station ID</label>
+          <input type="text" id="stnSearchFilter" placeholder="🔍 Filter Station ID..." oninput="updateStnTable()">
+        </div>
+
+        <div class="table-wrapper">
+          <table id="stnTable">
+            <thead>
+              <tr>
+                <th>STN</th>
+                <th>Type</th>
+                <th>Easting</th>
+                <th>Northing</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Lot Stn Panel -->
+    <div id="tab-lot" class="tab-content" style="display: none;">
+      <div class="section-title">Lot Stn Creator</div>
+      <button type="button" class="primary-btn btn-lot" onclick="openLotModal()">+ Create New Lot Stn</button>
+      
+      <div class="section-title" style="margin-top: 18px;">
+        <span>Defined Lot Records</span>
+        <span id="totalLotAreaBadge" style="font-size: 10px; color: #25d366; text-transform: none;">Total: 0 m²</span>
+      </div>
+      <div class="table-wrapper">
+        <table id="lotTable">
+          <thead>
+            <tr>
+              <th>PA</th>
+              <th>UPI / Lot</th>
+              <th>Area</th>
+              <th>Node</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <button type="button" class="primary-btn btn-export" onclick="exportLotStnTxt()" style="margin-top: 10px;">Export Lot Stn (.TXT)</button>
+    </div>
+
+    <!-- Tab 5: Cadastral Calculator Tools (From CALCULATOR_NEWW.xls) -->
+    <div id="tab-calc" class="tab-content" style="display: none;">
+      <div class="sub-tab-bar" style="flex-wrap: wrap;">
+        <button type="button" class="sub-tab-btn active" id="subTabCalcTraverseBtn" onclick="switchCalcTool('traverse')">📐 Bowditch</button>
+        <button type="button" class="sub-tab-btn" id="subTabCalcInverseBtn" onclick="switchCalcTool('inverse')">🔄 Inverse</button>
+        <button type="button" class="sub-tab-btn" id="subTabCalcMissingBtn" onclick="switchCalcTool('missing')">❓ Missing</button>
+        <button type="button" class="sub-tab-btn" id="subTabCalcSecantBtn" onclick="switchCalcTool('secant')">🛣️ Secant</button>
+        <button type="button" class="sub-tab-btn" id="subTabCalcConverterBtn" onclick="switchCalcTool('converter')">🔄 Area</button>
+      </div>
+
+      <!-- Tool 1: Bowditch Traverse Misclose & Adjustment -->
+      <div id="calc-tool-traverse">
+        <div class="section-title">
+          <span>Traverse Misclose & Bowditch</span>
+          <button type="button" class="icon-btn" onclick="computeCurrentTraverseClosure()">⚡ Compute</button>
+        </div>
+        <div class="card-panel">
+          <div id="traverseClosureReport" style="font-size: 12px; line-height: 1.6; color: #d0d2e0;">
+            Click <b>"Compute"</b> to evaluate closure and precision from currently logged lines.
+          </div>
+          <button type="button" class="primary-btn btn-datum" id="applyBowditchBtn" onclick="applyBowditchAdjustment()" style="margin-top: 10px; display: none;">⚖️ Apply Bowditch Adjustment</button>
+        </div>
+      </div>
+
+      <!-- Tool 2: Inverse Bearing & Distance between Coordinates -->
+      <div id="calc-tool-inverse" style="display: none;">
+        <div class="section-title">Compute Bearing & Distance by 2 Coords</div>
+        <div class="card-panel">
+          <label>Point 1 (From)</label>
+          <div class="inline-inputs" style="margin-bottom: 8px;">
+            <input type="number" step="0.001" id="invE1" placeholder="Easting 1">
+            <input type="number" step="0.001" id="invN1" placeholder="Northing 1">
+          </div>
+          <label>Point 2 (To)</label>
+          <div class="inline-inputs" style="margin-bottom: 10px;">
+            <input type="number" step="0.001" id="invE2" placeholder="Easting 2">
+            <input type="number" step="0.001" id="invN2" placeholder="Northing 2">
+          </div>
+          <button type="button" class="primary-btn" onclick="executeInverseCalc()">Compute Inverse</button>
+          <div id="inverseResultBox" class="calc-output-box" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Tool 3: Missing Line Calculator -->
+      <div id="calc-tool-missing" style="display: none;">
+        <div class="section-title">Missing Data Calculation</div>
+        <div class="card-panel">
+          <label>Missing Type</label>
+          <select id="missingTypeSelect" onchange="toggleMissingType()" style="margin-bottom: 10px;">
+            <option value="distances">Two Missing Distances (Known Bearings)</option>
+            <option value="bearings">Two Missing Bearings (Known Distances)</option>
+          </select>
+
+          <label>Closing Baseline (From Start to End of other lines)</label>
+          <div class="inline-inputs" style="margin-bottom: 8px;">
+            <input type="number" step="0.001" id="missBaseE" placeholder="Closing Easting (ΔE)">
+            <input type="number" step="0.001" id="missBaseN" placeholder="Closing Northing (ΔN)">
+          </div>
+
+          <!-- Distances Inputs -->
+          <div id="missingDistancesInput">
+            <label>Line 1 Bearing (DDD.MMSS)</label>
+            <input type="number" step="0.0001" id="missBg1" placeholder="e.g. 141.1500" style="margin-bottom: 8px;">
+            <label>Line 2 Bearing (DDD.MMSS)</label>
+            <input type="number" step="0.0001" id="missBg2" placeholder="e.g. 229.0000" style="margin-bottom: 10px;">
+          </div>
+
+          <!-- Bearings Inputs -->
+          <div id="missingBearingsInput" style="display: none;">
+            <label>Line 1 Distance (m)</label>
+            <input type="number" step="0.001" id="missDist1" placeholder="e.g. 24.724" style="margin-bottom: 8px;">
+            <label>Line 2 Distance (m)</label>
+            <input type="number" step="0.001" id="missDist2" placeholder="e.g. 28.123" style="margin-bottom: 10px;">
+          </div>
+
+          <button type="button" class="primary-btn btn-lot" onclick="executeMissingDataCalc()">Solve Missing Data</button>
+          <div id="missingResultBox" class="calc-output-box" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Tool 4: Secant Line / Road Reserve Calculator -->
+      <div id="calc-tool-secant" style="display: none;">
+        <div class="section-title">Secant Line / Road Reserve Calculator</div>
+        <div class="card-panel">
+          <label>Incoming Bearing 1 (DDD.MMSS)</label>
+          <input type="number" step="0.0001" id="secantBg1" placeholder="e.g. 90.0000" style="margin-bottom: 8px;">
+          <label>Outgoing Bearing 2 (DDD.MMSS)</label>
+          <input type="number" step="0.0001" id="secantBg2" placeholder="e.g. 180.0000" style="margin-bottom: 8px;">
+          <label>Road Width (m)</label>
+          <input type="number" step="0.001" id="secantWidth" placeholder="e.g. 20.000 (Road Reserve Width)" style="margin-bottom: 10px;">
+          <button type="button" class="primary-btn" onclick="executeSecantCalc()">Compute Secant Line</button>
+          <div id="secantResultBox" class="calc-output-box" style="display: none;"></div>
+        </div>
+      </div>
+
+      <!-- Tool 5: Area Converter & Mean Calculation -->
+      <div id="calc-tool-converter" style="display: none;">
+        <div class="section-title">Area Unit Synchronizer</div>
+        <div class="card-panel">
+          <label>Meter Persegi (m²)</label>
+          <input type="number" step="0.001" id="convSqM" placeholder="0.000" oninput="convertAreaFrom('m2')" style="margin-bottom: 8px;">
+          <label>Hektar (ha)</label>
+          <input type="number" step="0.00001" id="convHa" placeholder="0.0000" oninput="convertAreaFrom('ha')" style="margin-bottom: 8px;">
+          <label>Ekar (ac)</label>
+          <input type="number" step="0.00001" id="convAc" placeholder="0.0000" oninput="convertAreaFrom('ac')" style="margin-bottom: 8px;">
+          <label>Kaki Persegi (ft²)</label>
+          <input type="number" step="0.01" id="convSqFt" placeholder="0.00" oninput="convertAreaFrom('ft2')">
+        </div>
+
+        <div class="section-title" style="margin-top: 14px;">Mean Bearing Computation</div>
+        <div class="card-panel">
+          <label>Forward Bearing (DDD.MMSS)</label>
+          <input type="number" step="0.0001" id="meanBg1" placeholder="e.g. 45.3020" style="margin-bottom: 8px;">
+          <label>Back Bearing (DDD.MMSS)</label>
+          <input type="number" step="0.0001" id="meanBg2" placeholder="e.g. 225.3040" style="margin-bottom: 10px;">
+          <button type="button" class="primary-btn btn-secondary" onclick="executeMeanBearingCalc()">Compute Mean Bearing</button>
+          <div id="meanResultBox" class="calc-output-box" style="display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-footer-watermark">Copyright © CPDG Johor</div>
+  </div>
+
+  <!-- Resizer Gutter -->
+  <div class="resizer" id="dragResizer" title="Drag left/right to resize sidebar"></div>
+
+  <!-- Canvas Viewport -->
+  <div class="canvas-container" id="canvasParent">
+    <div class="pick-banner" id="pickBanner">🎯 CLICK ANY STATION NODE ON DRAWING</div>
+
+    <div class="toolbar">
+      <button class="tool-btn" id="measureBtn" onclick="toggleMeasureTool()" title="Measure Inverse Bearing & Distance between 2 nodes">📐 Measure</button>
+      <button class="tool-btn" id="areaMeasureBtn" onclick="toggleAreaTool()" title="Measure enclosed area by clicking stations">📐 Area</button>
+      
+      <!-- Basemap Switcher Dropdown -->
+      <div class="dropdown-container">
+        <button class="tool-btn" onclick="toggleDropdown(event, 'basemapDropdownMenu')" title="Select Aerial or Vector Basemap Layer">🗺️ Basemap ▾</button>
+        <div class="dropdown-menu" id="basemapDropdownMenu">
+          <div class="dropdown-header">Satellite & Imagery</div>
+          <label class="radio-item">
+            <input type="radio" name="basemapRadio" value="google_sat" checked onchange="setBasemap(this.value)">
+            <span>Google Satellite Hybrid</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="basemapRadio" value="esri_sat" onchange="setBasemap(this.value)">
+            <span>Esri World Imagery</span>
+          </label>
+          
+          <div class="dropdown-header">Vector & Streets</div>
+          <label class="radio-item">
+            <input type="radio" name="basemapRadio" value="google_streets" onchange="setBasemap(this.value)">
+            <span>Google Streets</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="basemapRadio" value="osm" onchange="setBasemap(this.value)">
+            <span>OpenStreetMap Standard</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="basemapRadio" value="esri_topo" onchange="setBasemap(this.value)">
+            <span>Esri Topographic</span>
+          </label>
+          
+          <div class="dropdown-header">Options</div>
+          <label class="radio-item">
+            <input type="radio" name="basemapRadio" value="none" onchange="setBasemap(this.value)">
+            <span>None (CAD Dark Grid)</span>
+          </label>
+          <div class="toggle-slider-wrap">
+            <span>Opacity:</span>
+            <input type="range" id="basemapOpacity" min="10" max="100" value="85" oninput="changeBasemapOpacity(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- View Visibility Dropdown -->
+      <div class="dropdown-container">
+        <button class="tool-btn" onclick="toggleDropdown(event, 'viewDropdownMenu')" title="Toggle Canvas Display Layers">👁️ View ▾</button>
+        <div class="dropdown-menu" id="viewDropdownMenu">
+          <label class="toggle-item">
+            <span>STN Labels</span>
+            <input type="checkbox" id="showStnLabelsToggle" checked onchange="drawCAD()">
+          </label>
+          <label class="toggle-item">
+            <span>Bearing / Distance</span>
+            <input type="checkbox" id="showLineDataToggle" checked onchange="drawCAD()">
+          </label>
+          <label class="toggle-item">
+            <span>Lot Area Labels</span>
+            <input type="checkbox" id="showLotAreaToggle" checked onchange="drawCAD()">
+          </label>
+        </div>
+      </div>
+
+      <button class="tool-btn" id="undoBtnTop" onclick="undo()" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
+      <button class="tool-btn" id="redoBtnTop" onclick="redo()" disabled title="Redo (Ctrl+Y)">↪ Redo</button>
+      <button class="tool-btn" onclick="zoomIn()">Zoom +</button>
+      <button class="tool-btn" onclick="zoomOut()">Zoom −</button>
+      <button class="tool-btn" onclick="zoomExtents()">Fit View</button>
+    </div>
+    
+    <canvas id="cadCanvas"></canvas>
+    
+    <div class="inspector-toast" id="inspectorToast">
+      <div style="font-weight: 800; color: #00f2ff; margin-bottom: 6px; text-transform: uppercase;" id="toastTitle">Station Inspector</div>
+      <div id="toastBody" style="color: #ffffff; line-height: 1.5; font-size: 12px; margin-bottom: 8px;"></div>
+      <button type="button" id="toastDatumBtn" class="primary-btn btn-datum" style="padding: 5px; font-size: 11px; margin-top: 0;">Configure Fix Coordinates</button>
+      <button type="button" id="toastDeleteStnBtn" class="primary-btn btn-danger" style="padding: 5px; font-size: 11px; margin-top: 6px;" onclick="promptDeleteStationFromToast()">🗑️ Delete Station</button>
+      <button type="button" id="toastDeleteMultiBtn" class="primary-btn btn-danger" style="padding: 6px; font-size: 11px; margin-top: 6px; display: none;" onclick="deleteSelectedMultiLegs()">🗑️ Delete Selected Lines</button>
+    </div>
+
+    <div class="instructions">Mouse Wheel Drag / Mid-Click: Pan | Scroll: Zoom | L➔R Drag: Window Select | R➔L Drag: Crossing Select | ESC: Clear</div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom: 14px; font-size: 15px; color: #ffffff; font-weight: 800;">Edit Line Record</h3>
+    <input type="hidden" id="editLegIndex">
+    
+    <div class="form-group">
+      <div class="inline-inputs">
+        <div>
+          <label>From STN ID</label>
+          <input type="text" id="editFromStn">
+        </div>
+        <div>
+          <label>To STN ID</label>
+          <input type="text" id="editToStn">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Bearing (DDD - MM - SS)</label>
+      <div class="inline-inputs">
+        <input type="number" id="editDeg" placeholder="DDD">
+        <input type="number" id="editMin" placeholder="MM">
+        <input type="number" id="editSec" placeholder="SS">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Distance (Meters)</label>
+      <input type="number" step="0.001" id="editDist">
+    </div>
+
+    <button type="button" class="primary-btn" onclick="saveLegEdit()">Save Changes</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeEditModal()" style="margin-top: 6px;">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="datumModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom: 14px; font-size: 15px; color: #ffea00; font-weight: 800;">🔺 Configure Fix Coordinates</h3>
+    <input type="hidden" id="datumStnId">
+    
+    <div class="form-group">
+      <label>Station ID</label>
+      <input type="text" id="datumStnDisplay" readonly style="opacity: 0.7;">
+    </div>
+
+    <div class="form-group">
+      <div class="inline-inputs">
+        <div>
+          <label>Fixed Easting (X)</label>
+          <input type="number" step="0.001" id="datumEastingInput">
+        </div>
+        <div>
+          <label>Fixed Northing (Y)</label>
+          <input type="number" step="0.001" id="datumNorthingInput">
+        </div>
+      </div>
+    </div>
+
+    <button type="button" class="primary-btn btn-datum" onclick="saveDatumCoordinates()">Save & Recalculate Traverse</button>
+    <button type="button" class="primary-btn btn-danger" id="removeDatumBtn" onclick="removeSelectedDatum()" style="margin-top: 6px;">Unset Fix Status</button>
+    <button type="button" class="primary-btn btn-danger" id="deleteDatumStnBtn" onclick="deleteStationFromDatumModal()" style="margin-top: 6px;">🗑️ Delete Station Completely</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeDatumModal()" style="margin-top: 6px;">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteStnModal">
+  <div class="modal-box" style="border: 1px solid #ff3344;">
+    <h3 style="margin-bottom: 10px; font-size: 15px; color: #ff5566; font-weight: 800;">🗑️ Delete Station Confirmation</h3>
+    <input type="hidden" id="pendingDeleteStnId">
+    <p style="font-size: 12px; color: #d0d2e0; line-height: 1.5; margin-bottom: 14px;" id="deleteStnWarningBody">
+      Are you sure you want to delete this station?
+    </p>
+
+    <button type="button" class="primary-btn btn-danger" onclick="confirmExecuteDeleteStation()">Yes, Delete Station & Connected Lines</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeDeleteStnModal()" style="margin-top: 6px;">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="lotModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom: 14px; font-size: 15px; color: #ffffff; font-weight: 800;">Create Lot Stn Record</h3>
+    
+    <div class="form-group">
+      <label>No. PA (Certified Plan No.)</label>
+      <input type="text" id="lotPaInput" placeholder="e.g. PA40408" value="PA40408">
+    </div>
+
+    <div class="form-group">
+      <label>UPI (Unique Parcel Identifier)</label>
+      <input type="text" id="lotUpiInput" placeholder="e.g. 0102060001519" value="0102060001519">
+      <div style="font-size: 11px; color: #8a8d9b; margin-top: 4px;">Display Lot No starts from 10th character (e.g., Lot 1519).</div>
+    </div>
+
+    <button type="button" class="primary-btn btn-lot" onclick="startLotSelection()">Next: Select Nodes Clockwise</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeLotModal()" style="margin-top: 6px;">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editLotModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom: 14px; font-size: 15px; color: #ffffff; font-weight: 800;">Edit Lot Stn Record</h3>
+    <input type="hidden" id="editLotIndex">
+    
+    <div class="form-group">
+      <label>No. PA (Certified Plan No.)</label>
+      <input type="text" id="editLotPa">
+    </div>
+
+    <div class="form-group">
+      <label>UPI (Unique Parcel Identifier)</label>
+      <input type="text" id="editLotUpi">
+    </div>
+
+    <div class="form-group">
+      <label>Node Sequence (Comma Separated)</label>
+      <input type="text" id="editLotNodesStr">
+      <div style="font-size: 11px; color: #8a8d9b; margin-top: 4px;">e.g. 180436610,262950008,262950009</div>
+    </div>
+
+    <button type="button" class="primary-btn btn-lot" onclick="saveLotEdit()">Save Lot Changes</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeEditLotModal()" style="margin-top: 6px;">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="closureModal">
+  <div class="modal-box" style="border: 1px solid #ffea00;">
+    <h3 style="margin-bottom: 10px; font-size: 15px; color: #ffea00; font-weight: 800;">⚠️ Line Unclosed Warning</h3>
+    <p style="font-size: 12px; color: #d0d2e0; line-height: 1.5; margin-bottom: 14px;" id="closureWarningBody">
+      The calculated line endpoint is outside the 0.05m tolerance buffer of existing Station ID.
+    </p>
+
+    <button type="button" class="primary-btn btn-danger" onclick="confirmProceedDuplicate()">Proceed (Create Duplicate Node)</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeClosureModal()" style="margin-top: 6px;">Cancel & Fix Entry</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exportModal">
+  <div class="modal-box">
+    <h3 style="margin-bottom: 14px; font-size: 15px; color: #ffffff; font-weight: 800;">Export CAD & KML Files</h3>
+    
+    <div class="form-group">
+      <label>Select Export Format</label>
+      <select id="exportFormat">
+        <option value="txt">KDE Survey Text File (.TXT)</option>
+        <option value="dxf">AutoCAD Vector Drawing (.DXF)</option>
+        <option value="kml">Google Earth Overlay (.KML)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Bearing Weightage (TXT export)</label>
+      <input type="number" id="bearingWeight" value="15">
+    </div>
+    <div class="form-group">
+      <label>Distance Weightage (TXT export)</label>
+      <input type="number" id="distanceWeight" value="0.01">
+    </div>
+
+    <button type="button" class="primary-btn btn-export" onclick="executeExport()">Generate & Download</button>
+    <button type="button" class="primary-btn btn-secondary" onclick="closeExportModal()" style="margin-top: 6px;">Cancel</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
